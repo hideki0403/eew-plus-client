@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EEW Plus - DEBUGMODE</title>
+
+    <!-- CSS読み込み  -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="css/materialize.css" type="text/css" rel="stylesheet" media="screen,projection" />
+    <link href="css/style.css" type="text/css" rel="stylesheet" media="screen,projection" />
+    <link href="css/mainStyle.css" type="text/css" rel="stylesheet" media="screen,projection" />
+
+</head>
+
+<body class="wrapper blue-grey darken-4">
+    <div class="map_box">
+        <div class="mainCanvas">
+            <img class="sourceImages" id="map-background" src="assets/kyosinmonitor/map-normal.png">
+            <img class="sourceImages" id="map-estsindo" src="">
+            <canvas class="canvasImages" width="352" height="400" id="mainCanvas"></canvas>
+            <img class="sourceImages" id="map-pga" src="">
+            <canvas class="bg_acmap" width="352" height="400" id="subCanvas"></canvas>
+            <canvas class="canvasImages" width="352" height="400" id="detectionCircle"></canvas>
+            <img class="sourceImages" id="map-pswave" src="">
+        </div>
+    </div>
+
+    <div class="info_box">
+        <ul class="collection with-header">
+            <li class="collection-header">
+                <h6>地震情報 [警報]</h6>
+            </li>
+            <li class="collection-item"><span class="badge">胆振地方中東部</span>震源</li>
+            <li class="collection-item"><span class="badge">7</span>震度</li>
+            <li class="collection-item"><span class="badge">7.0</span>マグニチュード</li>
+            <li class="collection-item"><span class="badge">40km</span>深さ</li>
+            <li class="collection-item"><span class="badge">第18報</span>電文数</li>
+        </ul>
+    </div>
+
+    <!-- Script系読み込み -->
+    <script>
+        window.jQuery = window.$ = require('jquery')
+    </script>
+    <script src="js/materialize.js"></script>
+    <script src="js/shortcut.js"></script>
+    <script src="js/init.js"></script>
+    <script src="js/loadCss.js"></script>
+    <script src="js/disableEval.js"></script>
+    <script src="js/rgbcolor.js"></script>
+
+    <!-- メイン処理 -->
+    <script>
+        const fs = require('fs')
+        require('date-utils')
+
+        var obsPointData = JSON.parse(fs.readFileSync(__dirname + '/datas/newSource.json'))
+
+        var canvas = $('#subCanvas').get(0)
+        var ctx = canvas.getContext("2d")
+        var canvas2 = $('#detectionCircle').get(0)
+        var ctx2 = canvas2.getContext("2d")
+
+        function mainWindow() {
+
+            var dt = new Date()
+            var now = new Date()
+            dt.setSeconds(now.getSeconds() - 1)
+            var timedata = dt.toFormat("YYYYMMDDHH24MISS")
+            var datedata = dt.toFormat('YYYYMMDD')
+            var mainTimeData = datedata + '/' + timedata
+
+            // est&pswave&pga
+            $('#map-estsindo').attr('src', 'http://www.kmoni.bosai.go.jp/new/data/map_img/EstShindoImg/eew/' + mainTimeData + '.eew.gif')
+            $('#map-pswave').attr('src', 'http://www.kmoni.bosai.go.jp/new/data/map_img/PSWaveImg/eew/' + mainTimeData + '.eew.gif')
+            $('#map-pga').attr('src', 'http://www.kmoni.bosai.go.jp/new/data/map_img/RealTimeImg/jma_s/' + mainTimeData + '.jma_s.gif')
+
+            var img = new Image()
+            //  img.src = 'http://www.kmoni.bosai.go.jp/new/data/map_img/RealTimeImg/jma_s/' + datedata + '/' + timedata + '.jma_s.gif'
+            img.src = 'http://www.kmoni.bosai.go.jp/new/data/map_img/RealTimeImg/acmap_b/' + mainTimeData + '.acmap_b.gif'
+            img.onload = function () {
+                ctx.clearRect(0, 0, canvas.width, canvas.height)
+                ctx.drawImage(img, 0, 0)
+            }
+
+            for (var i = 0; obsPointData.length > i; i++) {
+                var pxData = ctx.getImageData(obsPointData[i].x, obsPointData[i].y, 1, 1)
+                if (pxData.data[2] < 150 && pxData.data[1] > 170 && pxData.data[3] === 255) {
+                    ctx2.beginPath ()
+                    console.log(obsPointData[i].r + ' - ' + obsPointData[i].m)
+                    ctx2.arc(obsPointData[i].x, obsPointData[i].y, 15, 0 * Math.PI / 180, 360 * Math.PI / 180, false)
+                    ctx2.strokeStyle = 'rgb(' + pxData.data[0] + ',' + pxData.data[1] + ',' + pxData.data[2] + ')'
+                    ctx2.lineWidth = 1
+                    ctx2.stroke()
+                    clearCircle(obsPointData[i].x, obsPointData[i].y)
+                }
+            }
+
+            return
+        }
+
+        function clearCircle(x, y) {
+            setTimeout(function () {
+                ctx2.clearRect(x - 16, y - 16, 32, 32)
+            }, 2400)
+        }
+
+        setInterval(function () {
+            mainWindow()
+        }, 1000)
+    </script>
+
+</body>
+
+</html>
